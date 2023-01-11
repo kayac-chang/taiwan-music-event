@@ -10,27 +10,20 @@ def parse_activity(response: Response):
 
     def parse_date(text: str):
         [date, _, time] = text.split('|')
-        return {
-            'text': text,
-            'datetime': datetime.strptime(
-                f'{date.strip()} {time.strip()}',
-                "%Y 年 %m 月 %d 日 %H:%M"
-            )
-        }
+        return datetime.strptime(
+            f'{date.strip()} {time.strip()}',
+            "%Y 年 %m 月 %d 日 %H:%M"
+        )
 
     def parse_location(selector: str):
-        tag = soup.select_one(selector)
-        return {
-            'address': tag.contents[2],
-            'map': tag.contents[3]['href'],
-        }
+        return soup.select_one(selector).contents[2].split('・')[-1]
 
     def parse_text(selector: str):
         return soup.select_one(selector).get_text(strip=True)
 
     yield {
         'title': parse_text('#pjax-container h1'),
-        'date':
+        'datetime':
             parse_date(parse_text('#pjax-container h3:nth-of-type(1)')),
         'location': parse_location('#pjax-container h3:nth-of-type(2)'),
         'ticket': parse_text('#pjax-container h3:nth-of-type(3)'),
