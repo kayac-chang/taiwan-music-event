@@ -1,5 +1,5 @@
 from itemadapter import ItemAdapter
-import psycopg
+from psycopg_pool import ConnectionPool
 
 insert_artist = '''
 with ins as (
@@ -65,9 +65,7 @@ on conflict do nothing
 
 
 class PGPipeline:
-    def process_item(self, item, spider):
-        adapter = ItemAdapter(item)
-
+    def open_spider(self, spider):
         conninfo = {
             'host': spider.settings.get("PG_HOST"),
             'dbname': spider.settings.get("PG_DBNAME"),
@@ -77,8 +75,16 @@ class PGPipeline:
         }
         conninfo = ' '.join([
             f'{key}={value}' for key, value in conninfo.items()])
+        self.pool = ConnectionPool(conninfo, max_size=20)
+        self.pool.wait()
 
-        with psycopg.connect(conninfo) as conn:
+    def close_spider(self, _):
+        self.pool.close()
+
+    async def process_item(self, item, spider):
+        adapter = ItemAdapter(item)
+
+        with self.pool.connection() as conn:
             # save event
             (event_id,) = conn.execute(insert_event, {
                 'title': adapter.get('title'),
